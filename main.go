@@ -31,6 +31,7 @@ func main() {
 			},
 			UniformBucketLevelAccess: pulumi.Bool(true),
 			Location:                 pulumi.String("EU"),
+			ForceDestroy:             pulumi.Bool(true),
 		})
 		if err != nil {
 			return err
