@@ -5,6 +5,22 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
+func createBucketObject(ctx *pulumi.Context, bucket *storage.Bucket, filePath string, contentType string) error {
+	bucketObject, err := storage.NewBucketObject(ctx, filePath, &storage.BucketObjectArgs{
+		Bucket:      bucket.Name,
+		ContentType: pulumi.String(contentType),
+		Source:      pulumi.NewFileAsset("src/" + filePath),
+	})
+
+	bucketEndpoint := pulumi.Sprintf("http://storage.googleapis.com/%s/%s", bucket.Name, bucketObject.Name)
+	if err != nil {
+		return err
+	}
+
+	ctx.Export("bucketEndpoint"+filePath, bucketEndpoint)
+	return nil
+}
+
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
 		// Create a GCP resource (Storage Bucket)
@@ -31,44 +47,12 @@ func main() {
 			return err
 		}
 
-		bucketObject, err := storage.NewBucketObject(ctx, "index.html", &storage.BucketObjectArgs{
-			Bucket:      bucket.Name,
-			ContentType: pulumi.String("text/html"),
-			Source:      pulumi.NewFileAsset("src/index.html"),
-		})
-
-		bucketEndpoint := pulumi.Sprintf("http://storage.googleapis.com/%s/%s", bucket.Name, bucketObject.Name)
-		if err != nil {
-			return err
-		}
-
-		bucketObject404, err := storage.NewBucketObject(ctx, "404.html", &storage.BucketObjectArgs{
-			Bucket:      bucket.Name,
-			ContentType: pulumi.String("text/html"),
-			Source:      pulumi.NewFileAsset("src/404.html"),
-		})
-
-		bucketEndpoint404 := pulumi.Sprintf("http://storage.googleapis.com/%s/%s", bucket.Name, bucketObject404.Name)
-		if err != nil {
-			return err
-		}
-
-		bucketObjectStatic, err := storage.NewBucketObject(ctx, "styles.css", &storage.BucketObjectArgs{
-			Bucket:      bucket.Name,
-			ContentType: pulumi.String("text/css"),
-			Source:      pulumi.NewFileAsset("src/styles.css"),
-		})
-
-		bucketEndpointStatic := pulumi.Sprintf("http://storage.googleapis.com/%s/%s", bucket.Name, bucketObjectStatic.Name)
-		if err != nil {
-			return err
-		}
+		createBucketObject(ctx, bucket, "index.html", "text/html")
+		createBucketObject(ctx, bucket, "404.html", "text/html")
+		createBucketObject(ctx, bucket, "styles.css", "text/css")
 
 		// Export the DNS name of the bucket
 		ctx.Export("bucketName", bucket.Url)
-		ctx.Export("bucketEndpointIndex", bucketEndpoint)
-		ctx.Export("bucketEndpoint404", bucketEndpoint404)
-		ctx.Export("bucketEndpointStatic", bucketEndpointStatic)
 		return nil
 	})
 }
